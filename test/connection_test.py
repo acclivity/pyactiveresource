@@ -7,8 +7,8 @@ __author__ = 'Mark Roach (mrroach@google.com)'
 
 
 import unittest
-import urllib2
-from StringIO import StringIO
+from six import BytesIO
+from six.moves import urllib
 from pyactiveresource import connection
 from pyactiveresource import util
 from pyactiveresource import formats
@@ -43,7 +43,7 @@ class ConnectionTest(unittest.TestCase):
         self.connection = connection.Connection(self.http.site)
     
     def assert_response_raises(self, error, code):
-        response = urllib2.HTTPError('', code, '', {}, StringIO(''))
+        response = urllib.error.HTTPError('', code, '', {}, BytesIO(b''))
         self.http.set_response(response)
         self.assertRaises(error, self.connection._open, '', '')
       
@@ -57,7 +57,7 @@ class ConnectionTest(unittest.TestCase):
             response = http_fake.FakeResponse(code, str(code))
             self.http.set_response(response)
             self.assertEquals(self.connection._open('', ''),
-                              connection.Response(code, str(code)))
+                              connection.Response(code, str(code).encode('utf-8')))
 
     def test_handle_unauthorized_access(self):
         # 401 is an unauthorized request
@@ -108,7 +108,7 @@ class ConnectionTest(unittest.TestCase):
     def test_get(self):
         person = util.to_json({'id': 1, 'name': 'Matz'}, root='person')
         self.http.respond_to(
-            'GET', 'http://localhost/people/1.json', {}, person)
+            'GET', '/people/1.json', {}, person)
         self.connection.format = formats.JSONFormat
         response = self.connection.get('/people/1.json')
         self.assertEqual(response['name'], 'Matz')
@@ -116,18 +116,18 @@ class ConnectionTest(unittest.TestCase):
     def test_get_with_xml_format(self):
         person = util.to_xml({'id': 1, 'name': 'Matz'}, root='person')
         self.http.respond_to(
-            'GET', 'http://localhost/people/1.xml', {}, person)
+            'GET', '/people/1.xml', {}, person)
         self.connection.format = formats.XMLFormat
         response = self.connection.get('/people/1.xml')
         self.assertEqual(response['name'], 'Matz')
 
     def test_head(self):
-        self.http.respond_to('HEAD', 'http://localhost/people/1.json', {}, '')
+        self.http.respond_to('HEAD', '/people/1.json', {}, '')
         self.assertFalse(self.connection.head('/people/1.json').body)
 
     def test_get_with_header(self):
         self.http.respond_to(
-            'GET', 'http://localhost/people/2.json', self.header, self.david)
+            'GET', '/people/2.json', self.header, self.david)
         david = self.connection.get('/people/2.json', self.header)
         self.assertEqual(david['name'], 'David')
   
